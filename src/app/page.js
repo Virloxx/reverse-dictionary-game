@@ -141,6 +141,7 @@ export default function ReverseDictionaryGame() {
   };
 
   const backToMenu = () => {
+    setNickname("");
     setIsPlaying(false);
     setShowScores(false);
     setScore(0);
@@ -177,7 +178,7 @@ export default function ReverseDictionaryGame() {
           />
           <button
             onClick={startGame}
-            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 mb-4"
+            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 mb-4 cursor-pointer"
           >
             Start Game
           </button>
@@ -187,7 +188,7 @@ export default function ReverseDictionaryGame() {
               setScoreSearchName(nickname);
               fetchScoreByNickname(nickname);
             }}
-            className="w-full border border-yellow-500 text-yellow-400 py-2 rounded hover:bg-gray-700"
+            className="w-full border border-yellow-500 text-yellow-400 py-2 rounded hover:bg-gray-700 cursor-pointer"
           >
             Check Score
           </button>
@@ -204,7 +205,7 @@ export default function ReverseDictionaryGame() {
           />
           <button
             onClick={() => fetchScoreByNickname(scoreSearchName)}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 mb-4"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 mb-4 cursor-pointer"
           >
             Search
           </button>
@@ -217,7 +218,7 @@ export default function ReverseDictionaryGame() {
           )}
           <button
             onClick={() => setShowScores(false)}
-            className="w-full mt-6 border border-gray-500 text-gray-300 py-2 rounded hover:bg-gray-700"
+            className="w-full mt-6 border border-gray-500 text-gray-300 py-2 rounded hover:bg-gray-700 cursor-pointer"
           >
             Back to Menu
           </button>
@@ -243,13 +244,13 @@ export default function ReverseDictionaryGame() {
               <>
                 <button
                   onClick={checkGuess}
-                  className="mb-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                  className="mb-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 cursor-pointer"
                 >
                   Submit
                 </button>
                 <button
                   onClick={handleSkip}
-                  className="w-full border border-red-500 text-red-400 py-2 rounded hover:bg-gray-700"
+                  className="w-full border border-red-500 text-red-400 py-2 rounded hover:bg-gray-700 cursor-pointer"
                 >
                   I don’t know
                 </button>
@@ -260,7 +261,7 @@ export default function ReverseDictionaryGame() {
                   fetchWordAndDefinition();
                   setStatus("");
                 }}
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 cursor-pointer"
               >
                 Next Word
               </button>
@@ -273,7 +274,7 @@ export default function ReverseDictionaryGame() {
 
             <button
               onClick={backToMenu}
-              className="mt-6 w-full text-gray-300 border border-gray-600 py-2 rounded hover:bg-gray-700"
+              className="mt-6 w-full text-gray-300 border border-gray-600 py-2 rounded hover:bg-gray-700 cursor-pointer"
             >
               Back to Menu
             </button>
