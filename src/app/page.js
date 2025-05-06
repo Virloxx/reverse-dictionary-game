@@ -1,62 +1,117 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { collection, addDoc, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/utilities/firebase.config';
+import React, { useEffect, useState } from "react";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+} from "firebase/firestore";
+import { db } from "@/utilities/firebase.config";
 
 export default function ReverseDictionaryGame() {
-  const [word, setWord] = useState('');
-  const [definition, setDefinition] = useState('');
-  const [userGuess, setUserGuess] = useState('');
-  const [status, setStatus] = useState('');
-  const [lengthFilter, setLengthFilter] = useState('');
+  const [word, setWord] = useState("");
+  const [definition, setDefinition] = useState("");
+  const [userGuess, setUserGuess] = useState("");
+  const [status, setStatus] = useState("");
+  const [lengthFilter, setLengthFilter] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [nickname, setNickname] = useState('');
+  const [nickname, setNickname] = useState("");
   const [score, setScore] = useState(0);
   const [showScores, setShowScores] = useState(false);
-  const [scoreSearchName, setScoreSearchName] = useState('');
+  const [scoreSearchName, setScoreSearchName] = useState("");
   const [foundScore, setFoundScore] = useState(null);
+  const [startTime, setStartTime] = useState(null);
+  const [revealedAnswer, setRevealedAnswer] = useState(false);
 
   const fetchWordAndDefinition = async () => {
-    setStatus('');
-    setUserGuess('');
+    setStatus("");
+    setUserGuess("");
+    setRevealedAnswer(false);
+
     try {
-      let wordApi = 'https://random-word-api.vercel.app/api?words=1';
+      let wordApi = "https://random-word-api.vercel.app/api?words=1";
       if (lengthFilter) {
         wordApi += `&length=${lengthFilter}`;
       }
-      const wordRes = await fetch(wordApi);
-      const [randomWord] = await wordRes.json();
-      setWord(randomWord);
 
-      const defRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${randomWord}`);
-      const defData = await defRes.json();
+      let foundValidDefinition = false;
+      while (!foundValidDefinition) {
+        const wordRes = await fetch(wordApi);
+        const [randomWord] = await wordRes.json();
+        const defRes = await fetch(
+          `https://api.dictionaryapi.dev/api/v2/entries/en/${randomWord}`
+        );
+        const defData = await defRes.json();
 
-      if (Array.isArray(defData) && defData[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
-        setDefinition(defData[0].meanings[0].definitions[0].definition);
-      } else {
-        setDefinition('Definition not found. Try again!');
+        if (
+          Array.isArray(defData) &&
+          defData[0]?.meanings?.[0]?.definitions?.[0]?.definition
+        ) {
+          setWord(randomWord);
+          setDefinition(defData[0].meanings[0].definitions[0].definition);
+          foundValidDefinition = true;
+        }
       }
+
+      setStartTime(Date.now());
     } catch (err) {
-      setDefinition('Error fetching word or definition.');
+      setDefinition("Error fetching word or definition.");
     }
   };
 
   const checkGuess = async () => {
-    if (userGuess.trim().toLowerCase() === word.toLowerCase()) {
-      setStatus('Correct! 🎉');
+    if (revealedAnswer) return;
+
+    const isCorrect = userGuess.trim().toLowerCase() === word.toLowerCase();
+    const reactionTime = Date.now() - startTime;
+
+    if (isCorrect) {
+      setStatus("Correct! 🎉");
+      setRevealedAnswer(true);
       const newScore = score + 1;
       setScore(newScore);
-      if (nickname) {
-        await addDoc(collection(db, "scores"), {
-          nickname: nickname,
-          score: newScore,
-          timestamp: new Date(),
-        });
-      }
+
+      await addDoc(collection(db, "scores"), {
+        nickname,
+        score: newScore,
+        timestamp: new Date(),
+      });
     } else {
-      setStatus('Incorrect. Try again! ❌');
+      setStatus("Incorrect. Try again! ❌");
     }
+
+    await addDoc(collection(db, "attempts"), {
+      nickname,
+      word,
+      definition,
+      userGuess,
+      isCorrect,
+      skipped: false,
+      reactionTime,
+      timestamp: new Date(),
+    });
+  };
+
+  const handleSkip = async () => {
+    const reactionTime = Date.now() - startTime;
+
+    setStatus(`The correct word was: ${word}`);
+    setRevealedAnswer(true);
+
+    await addDoc(collection(db, "attempts"), {
+      nickname,
+      word,
+      definition,
+      userGuess: "",
+      isCorrect: false,
+      skipped: true,
+      reactionTime,
+      timestamp: new Date(),
+    });
   };
 
   const startGame = () => {
@@ -70,21 +125,39 @@ export default function ReverseDictionaryGame() {
 
   const fetchScoreByNickname = async (name) => {
     if (!name) return;
-    const scoresRef = collection(db, 'scores');
-    const q = query(scoresRef, where('nickname', '==', name), orderBy('timestamp', 'desc'), limit(1));
+    const scoresRef = collection(db, "scores");
+    const q = query(
+      scoresRef,
+      where("nickname", "==", name),
+      orderBy("timestamp", "desc"),
+      limit(1)
+    );
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       setFoundScore(snapshot.docs[0].data().score);
     } else {
-      setFoundScore('No score found.');
+      setFoundScore("No score found.");
     }
+  };
+
+  const backToMenu = () => {
+    setIsPlaying(false);
+    setShowScores(false);
+    setScore(0);
+    setStatus("");
+    setUserGuess("");
+    setWord("");
+    setDefinition("");
+    setRevealedAnswer(false);
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
       {!isPlaying && !showScores ? (
         <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-md p-6">
-          <h1 className="text-3xl font-bold mb-4 text-center">Reverse Dictionary Game</h1>
+          <h1 className="text-3xl font-bold mb-4 text-center">
+            Reverse Dictionary Game
+          </h1>
           <label className="block mb-2">Nickname:</label>
           <input
             type="text"
@@ -136,7 +209,11 @@ export default function ReverseDictionaryGame() {
             Search
           </button>
           {foundScore !== null && (
-            <p className="text-center text-lg">{typeof foundScore === 'number' ? `${scoreSearchName}'s Score: ${foundScore}` : foundScore}</p>
+            <p className="text-center text-lg">
+              {typeof foundScore === "number"
+                ? `${scoreSearchName}'s score: ${foundScore}`
+                : foundScore}
+            </p>
           )}
           <button
             onClick={() => setShowScores(false)}
@@ -147,7 +224,9 @@ export default function ReverseDictionaryGame() {
         </div>
       ) : (
         <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-4 text-center">Reverse Dictionary Game</h1>
+          <h1 className="text-3xl font-bold mb-4 text-center">
+            Reverse Dictionary Game
+          </h1>
           <div className="bg-gray-800 shadow-md rounded-lg p-6">
             <p className="mb-4 text-lg font-semibold">Definition:</p>
             <p className="mb-6 italic">{definition}</p>
@@ -159,23 +238,45 @@ export default function ReverseDictionaryGame() {
               onChange={(e) => setUserGuess(e.target.value)}
               className="mb-4 p-2 w-full border border-gray-700 rounded bg-gray-700 text-white placeholder-gray-400"
             />
-            <button
-              onClick={checkGuess}
-              className="mb-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-            >
-              Submit
-            </button>
-            <button
-              onClick={fetchWordAndDefinition}
-              className="w-full border border-blue-500 text-blue-400 py-2 rounded hover:bg-gray-700"
-            >
-              Next Word
-            </button>
+
+            {!revealedAnswer ? (
+              <>
+                <button
+                  onClick={checkGuess}
+                  className="mb-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                >
+                  Submit
+                </button>
+                <button
+                  onClick={handleSkip}
+                  className="w-full border border-red-500 text-red-400 py-2 rounded hover:bg-gray-700"
+                >
+                  I don’t know
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  fetchWordAndDefinition();
+                  setStatus("");
+                }}
+                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+              >
+                Next Word
+              </button>
+            )}
 
             {status && (
               <p className="mt-4 text-center text-lg font-semibold">{status}</p>
             )}
             <p className="mt-2 text-sm text-center">Score: {score}</p>
+
+            <button
+              onClick={backToMenu}
+              className="mt-6 w-full text-gray-300 border border-gray-600 py-2 rounded hover:bg-gray-700"
+            >
+              Back to Menu
+            </button>
           </div>
         </div>
       )}
