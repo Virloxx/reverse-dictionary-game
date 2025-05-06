@@ -254,7 +254,7 @@ export default function ReverseDictionaryGame() {
                 >
                   I don’t know
                 </button>
-              </>
+              </> 
             ) : (
               <button
                 onClick={() => {
