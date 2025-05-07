@@ -26,7 +26,7 @@ export default function ReverseDictionaryGame() {
   const [foundScore, setFoundScore] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [revealedAnswer, setRevealedAnswer] = useState(false);
-
+  
   const fetchWordAndDefinition = async () => {
     setStatus("");
     setUserGuess("");
@@ -124,24 +124,22 @@ export default function ReverseDictionaryGame() {
   };
 
   const fetchScoreByNickname = async (name) => {
-    if (!name) return;
-    const scoresRef = collection(db, "scores");
-    const q = query(
-      scoresRef,
-      where("nickname", "==", name),
-      orderBy("timestamp", "desc"),
-      limit(1)
-    );
+    if (!name.trim()) return;
+    const scoresRef = collection(db, 'scores');
+    const q = query(scoresRef, where('nickname', '==', name), orderBy('timestamp', 'desc'), limit(1));
     const snapshot = await getDocs(q);
+  
     if (!snapshot.empty) {
-      setFoundScore(snapshot.docs[0].data().score);
+      const score = snapshot.docs[0].data().score;
+      setFoundScore(`${name}'s score: ${score}`);
     } else {
-      setFoundScore("No score found.");
+      setFoundScore(`No score found for "${name}".`);
     }
   };
-
+  
   const backToMenu = () => {
     setNickname("");
+    setLengthFilter("");
     setIsPlaying(false);
     setShowScores(false);
     setScore(0);
@@ -173,6 +171,11 @@ export default function ReverseDictionaryGame() {
             min="1"
             value={lengthFilter}
             onChange={(e) => setLengthFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                e.preventDefault();
+              }
+            }}
             className="mb-4 p-2 w-full border border-gray-700 rounded bg-gray-700 text-white placeholder-gray-400"
             placeholder="e.g. 5"
           />
@@ -209,15 +212,15 @@ export default function ReverseDictionaryGame() {
           >
             Search
           </button>
-          {foundScore !== null && (
-            <p className="text-center text-lg">
-              {typeof foundScore === "number"
-                ? `${scoreSearchName}'s score: ${foundScore}`
-                : foundScore}
-            </p>
+          {foundScore && (
+            <p className="text-center text-lg">{foundScore}</p>
           )}
           <button
-            onClick={() => setShowScores(false)}
+            onClick={() => {
+              setShowScores(false);
+              setScoreSearchName('');
+              setFoundScore(null);
+            }}
             className="w-full mt-6 border border-gray-500 text-gray-300 py-2 rounded hover:bg-gray-700 cursor-pointer"
           >
             Back to Menu
