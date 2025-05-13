@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   collection,
   addDoc,
@@ -11,6 +11,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { db } from "@/utilities/firebase.config";
+import lemmatizer from "lemmatizer";
 
 export default function ReverseDictionaryGame() {
   const [word, setWord] = useState("");
@@ -21,68 +22,84 @@ export default function ReverseDictionaryGame() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [nickname, setNickname] = useState("");
   const [score, setScore] = useState(0);
-  const [showScores, setShowScores] = useState(false);
-  const [scoreSearchName, setScoreSearchName] = useState("");
-  const [foundScore, setFoundScore] = useState(null);
+  const [highScore, setHighScore] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [startTime, setStartTime] = useState(null);
   const [revealedAnswer, setRevealedAnswer] = useState(false);
-  
+
   const fetchWordAndDefinition = async () => {
     setStatus("");
     setUserGuess("");
     setRevealedAnswer(false);
-
     try {
-      let wordApi = "https://random-word-api.vercel.app/api?words=1";
-      if (lengthFilter) {
-        wordApi += `&length=${lengthFilter}`;
-      }
-
-      let foundValidDefinition = false;
-      while (!foundValidDefinition) {
-        const wordRes = await fetch(wordApi);
-        const [randomWord] = await wordRes.json();
-        const defRes = await fetch(
-          `https://api.dictionaryapi.dev/api/v2/entries/en/${randomWord}`
-        );
-        const defData = await defRes.json();
-
-        if (
-          Array.isArray(defData) &&
-          defData[0]?.meanings?.[0]?.definitions?.[0]?.definition
-        ) {
-          setWord(randomWord);
-          setDefinition(defData[0].meanings[0].definitions[0].definition);
-          foundValidDefinition = true;
+      let api = "https://random-word-api.vercel.app/api?words=1";
+      if (lengthFilter) api += `&length=${lengthFilter}`;
+      let found = false;
+      while (!found) {
+        const [raw] = await fetch(api).then(r => r.json());
+        const base = lemmatizer(raw);
+        if (lengthFilter && base.length !== +lengthFilter) continue;
+        const data = await fetch(
+          `https://api.dictionaryapi.dev/api/v2/entries/en/${base}`
+        ).then(r => r.json());
+        if (Array.isArray(data) && data[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
+          setWord(base);
+          setDefinition(data[0].meanings[0].definitions[0].definition);
+          found = true;
         }
       }
-
       setStartTime(Date.now());
-    } catch (err) {
+    } catch (e) {
       setDefinition("Error fetching word or definition.");
     }
   };
 
+  async function fetchHighScore(name) {
+    const scoresRef = collection(db, "scores");
+    const q = query(
+      scoresRef,
+      where("nickname", "==", name),
+      orderBy("score", "desc"),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    setHighScore(!snap.empty ? snap.docs[0].data().score : 0);
+  }
+
+  async function fetchLeaderboard() {
+    const snap = await getDocs(collection(db, "scores"));
+    const map = {};
+    snap.forEach(doc => {
+      const { nickname: n, score: s } = doc.data();
+      map[n] = Math.max(map[n] || 0, s);
+    });
+    const list = Object.entries(map)
+      .map(([n, s]) => ({ nickname: n, score: s }))
+      .sort((a, b) => b.score - a.score);
+    setLeaderboard(list);
+  }
+
+  const startGame = async () => {
+    if (!nickname.trim()) return alert("Please enter a nickname to start.");
+    await fetchHighScore(nickname);
+    setScore(0);
+    setIsPlaying(true);
+    await fetchWordAndDefinition();
+  };
+
   const checkGuess = async () => {
     if (revealedAnswer) return;
-
-    const isCorrect = userGuess.trim().toLowerCase() === word.toLowerCase();
-    const reactionTime = Date.now() - startTime;
-
+    const isCorrect = userGuess.trim().toLowerCase() === word;
+    const rt = Date.now() - (startTime || Date.now());
     if (isCorrect) {
       setStatus("Correct! 🎉");
       setRevealedAnswer(true);
-      const newScore = score + 1;
-      setScore(newScore);
-
-      await addDoc(collection(db, "scores"), {
-        nickname,
-        score: newScore,
-        timestamp: new Date(),
-      });
-    } else {
-      setStatus("Incorrect. Try again! ❌");
-    }
+      const ns = score + 1;
+      setScore(ns);
+      if (highScore != null && ns > highScore) setHighScore(ns);
+      await addDoc(collection(db, "scores"), { nickname, score: ns, timestamp: new Date() });
+    } else setStatus("Incorrect. Try again! ❌");
 
     await addDoc(collection(db, "attempts"), {
       nickname,
@@ -91,17 +108,15 @@ export default function ReverseDictionaryGame() {
       userGuess,
       isCorrect,
       skipped: false,
-      reactionTime,
+      reactionTime: rt,
       timestamp: new Date(),
     });
   };
 
   const handleSkip = async () => {
-    const reactionTime = Date.now() - startTime;
-
+    const rt = Date.now() - (startTime || Date.now());
     setStatus(`The correct word was: ${word}`);
     setRevealedAnswer(true);
-
     await addDoc(collection(db, "attempts"), {
       nickname,
       word,
@@ -109,40 +124,18 @@ export default function ReverseDictionaryGame() {
       userGuess: "",
       isCorrect: false,
       skipped: true,
-      reactionTime,
+      reactionTime: rt,
       timestamp: new Date(),
     });
   };
 
-  const startGame = () => {
-    if (!nickname.trim()) {
-      alert("Please enter a nickname to start the game.");
-      return;
-    }
-    setIsPlaying(true);
-    fetchWordAndDefinition();
-  };
-
-  const fetchScoreByNickname = async (name) => {
-    if (!name.trim()) return;
-    const scoresRef = collection(db, 'scores');
-    const q = query(scoresRef, where('nickname', '==', name), orderBy('timestamp', 'desc'), limit(1));
-    const snapshot = await getDocs(q);
-  
-    if (!snapshot.empty) {
-      const score = snapshot.docs[0].data().score;
-      setFoundScore(`${name}'s score: ${score}`);
-    } else {
-      setFoundScore(`No score found for "${name}".`);
-    }
-  };
-  
   const backToMenu = () => {
     setNickname("");
     setLengthFilter("");
     setIsPlaying(false);
-    setShowScores(false);
+    setShowLeaderboard(false);
     setScore(0);
+    setHighScore(null);
     setStatus("");
     setUserGuess("");
     setWord("");
@@ -152,135 +145,70 @@ export default function ReverseDictionaryGame() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
-      {!isPlaying && !showScores ? (
+      {!isPlaying && !showLeaderboard ? (
         <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-md p-6">
-          <h1 className="text-3xl font-bold mb-4 text-center">
-            Reverse Dictionary Game
-          </h1>
+          <h1 className="text-3xl font-bold mb-4 text-center">Reverse Dictionary Game</h1>
           <label className="block mb-2">Nickname:</label>
           <input
-            type="text"
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="mb-4 p-2 w-full border border-gray-700 rounded bg-gray-700 text-white placeholder-gray-400"
-            placeholder="Enter your nickname"
+            onChange={e => setNickname(e.target.value)}
+            className="mb-4 p-2 w-full border rounded bg-gray-700"
+            placeholder="Enter nickname"
           />
           <label className="block mb-2">Word Length (optional):</label>
           <input
             type="number"
             min="1"
             value={lengthFilter}
-            onChange={(e) => setLengthFilter(e.target.value)}
-            onKeyDown={(e) => {
-              if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                e.preventDefault();
-              }
-            }}
-            className="mb-4 p-2 w-full border border-gray-700 rounded bg-gray-700 text-white placeholder-gray-400"
+            onChange={e => setLengthFilter(e.target.value)}
+            onKeyDown={e => ["e","E","+","-","."].includes(e.key) && e.preventDefault()}
+            className="mb-4 p-2 w-full border rounded bg-gray-700"
             placeholder="e.g. 5"
           />
-          <button
-            onClick={startGame}
-            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 mb-4 cursor-pointer"
-          >
-            Start Game
-          </button>
-          <button
-            onClick={() => {
-              setShowScores(true);
-              setScoreSearchName(nickname);
-              fetchScoreByNickname(nickname);
-            }}
-            className="w-full border border-yellow-500 text-yellow-400 py-2 rounded hover:bg-gray-700 cursor-pointer"
-          >
-            Check Score
-          </button>
+          <button onClick={startGame} className="w-full bg-green-600 py-2 rounded mb-2">Start Game</button>
+          <button onClick={async () => { setShowLeaderboard(true); await fetchLeaderboard(); }} className="w-full border border-yellow-500 py-2 rounded">Leaderboard</button>
         </div>
-      ) : showScores ? (
+      ) : showLeaderboard ? (
         <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-md p-6">
-          <h2 className="text-2xl font-bold mb-4 text-center">Check Scores</h2>
-          <input
-            type="text"
-            value={scoreSearchName}
-            onChange={(e) => setScoreSearchName(e.target.value)}
-            className="mb-4 p-2 w-full border border-gray-700 rounded bg-gray-700 text-white placeholder-gray-400"
-            placeholder="Enter nickname to search"
-          />
-          <button
-            onClick={() => fetchScoreByNickname(scoreSearchName)}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 mb-4 cursor-pointer"
-          >
-            Search
-          </button>
-          {foundScore && (
-            <p className="text-center text-lg">{foundScore}</p>
-          )}
-          <button
-            onClick={() => {
-              setShowScores(false);
-              setScoreSearchName('');
-              setFoundScore(null);
-            }}
-            className="w-full mt-6 border border-gray-500 text-gray-300 py-2 rounded hover:bg-gray-700 cursor-pointer"
-          >
-            Back to Menu
-          </button>
+          <h2 className="text-2xl font-bold mb-4 text-center">Leaderboard</h2>
+          <table className="w-full text-left">
+            <thead><tr><th>Player</th><th>High Score</th></tr></thead>
+            <tbody>
+              {leaderboard.map(e => (
+                <tr key={e.nickname}><td>{e.nickname}</td><td>{e.score}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={backToMenu} className="w-full mt-4 border py-2 rounded">Back to Menu</button>
         </div>
       ) : (
         <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-4 text-center">
-            Reverse Dictionary Game
-          </h1>
+          <h1 className="text-3xl font-bold mb-4 text-center">Reverse Dictionary Game</h1>
           <div className="bg-gray-800 shadow-md rounded-lg p-6">
-            <p className="mb-4 text-lg font-semibold">Definition:</p>
+            <p className="mb-4 font-semibold">Definition:</p>
             <p className="mb-6 italic">{definition}</p>
-
             <input
-              type="text"
-              placeholder="Guess the word..."
               value={userGuess}
-              onChange={(e) => setUserGuess(e.target.value)}
-              className="mb-4 p-2 w-full border border-gray-700 rounded bg-gray-700 text-white placeholder-gray-400"
+              onChange={e => setUserGuess(e.target.value)}
+              className="mb-4 p-2 w-full border rounded bg-gray-700"
+              placeholder="Guess the word..."
             />
-
-            {!revealedAnswer ? (
-              <>
-                <button
-                  onClick={checkGuess}
-                  className="mb-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 cursor-pointer"
-                >
-                  Submit
-                </button>
-                <button
-                  onClick={handleSkip}
-                  className="w-full border border-red-500 text-red-400 py-2 rounded hover:bg-gray-700 cursor-pointer"
-                >
-                  I don’t know
-                </button>
-              </> 
-            ) : (
-              <button
-                onClick={() => {
-                  fetchWordAndDefinition();
-                  setStatus("");
-                }}
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 cursor-pointer"
-              >
-                Next Word
-              </button>
-            )}
-
-            {status && (
-              <p className="mt-4 text-center text-lg font-semibold">{status}</p>
-            )}
+            <>  
+              {!revealedAnswer ? (
+                <> 
+                  <button onClick={checkGuess} className="w-full bg-blue-600 py-2 rounded mb-2">Submit</button>
+                  <button onClick={handleSkip} className="w-full border border-red-500 py-2 rounded mb-2">I don’t know</button>
+                </>
+              ) : (
+                <button onClick={fetchWordAndDefinition} className="w-full bg-green-600 py-2 rounded mb-2">Next Word</button>
+              )}
+              {highScore !== null && (
+                <p className="text-center text-sm text-yellow-300 mb-2">Previous High Score: {highScore}</p>
+              )}
+            </>
+            {status && <p className="mt-2 text-center">{status}</p>}
             <p className="mt-2 text-sm text-center">Score: {score}</p>
-
-            <button
-              onClick={backToMenu}
-              className="mt-6 w-full text-gray-300 border border-gray-600 py-2 rounded hover:bg-gray-700 cursor-pointer"
-            >
-              Back to Menu
-            </button>
+            <button onClick={backToMenu} className="mt-4 w-full border py-2 rounded">Back to Menu</button>
           </div>
         </div>
       )}
