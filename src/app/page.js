@@ -68,15 +68,54 @@ export default function ReverseDictionaryGame() {
   }
 
   async function fetchLeaderboard() {
-    const snap = await getDocs(collection(db, "scores"));
-    const map = {};
-    snap.forEach(doc => {
-      const { nickname: n, score: s } = doc.data();
-      map[n] = Math.max(map[n] || 0, s);
+    const [attemptsSnap, scoresSnap] = await Promise.all([
+      getDocs(collection(db, "attempts")),
+      getDocs(collection(db, "scores"))
+    ]);
+
+    const stats = {};
+    scoresSnap.forEach(doc => {
+      const { nickname, score } = doc.data();
+      if (!stats[nickname]) stats[nickname] = { score: 0, wordTimes: {}, wrongs: 0 };
+      stats[nickname].score = Math.max(stats[nickname].score, score);
     });
-    const list = Object.entries(map)
-      .map(([n, s]) => ({ nickname: n, score: s }))
-      .sort((a, b) => b.score - a.score);
+
+    attemptsSnap.forEach(doc => {
+      const { nickname, reactionTime, skipped, isCorrect, word } = doc.data();
+      if (!stats[nickname]) stats[nickname] = { score: 0, wordTimes: {}, wrongs: 0 };
+
+      if (reactionTime != null && skipped !== true) {
+        const n = nickname;
+        stats[n].wordTimes[word] = stats[n].wordTimes[word] || [];
+        stats[n].wordTimes[word].push(parseFloat(reactionTime));
+
+        if (!isCorrect) {
+          stats[n].wrongs += 1;
+        }
+      }
+    });
+
+    const list = Object.entries(stats).map(([nickname, data]) => {
+      const { score, wordTimes, wrongs } = data;
+
+      const avgByWord = Object.entries(wordTimes).map(
+        ([w, arr]) => ({ word: w, avg: arr.reduce((a, b) => a + b, 0) / arr.length })
+      );
+      avgByWord.sort((a, b) => a.avg - b.avg);
+
+      const easiestWord = avgByWord.length >= 2 ? avgByWord[0].word      : "–";
+      const hardestWord = avgByWord.length >= 2 ? avgByWord[avgByWord.length - 1].word : "–";
+      const allTimes = avgByWord.flatMap(wt => wordTimes[wt.word]);
+      const shortest  = allTimes.length ? Math.min(...allTimes).toFixed(2) : "–";
+      const longest   = allTimes.length ? Math.max(...allTimes).toFixed(2) : "–";
+      const average   = allTimes.length
+        ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2)
+        : "–";
+
+      return { nickname, score, shortest, longest, average, wrongs, easiestWord, hardestWord };
+    });
+
+    list.sort((a, b) => b.score - a.score);
     setLeaderboard(list);
   }
 
@@ -92,6 +131,8 @@ export default function ReverseDictionaryGame() {
     if (revealedAnswer) return;
     const isCorrect = userGuess.trim().toLowerCase() === word;
     const rt = Date.now() - (startTime || Date.now());
+    const reactionTimeSec = +(rt / 1000).toFixed(2);
+
     if (isCorrect) {
       setStatus("Correct! 🎉");
       setRevealedAnswer(true);
@@ -108,13 +149,15 @@ export default function ReverseDictionaryGame() {
       userGuess,
       isCorrect,
       skipped: false,
-      reactionTime: rt,
+      reactionTime: reactionTimeSec,
       timestamp: new Date(),
     });
   };
 
   const handleSkip = async () => {
     const rt = Date.now() - (startTime || Date.now());
+    const reactionTimeSec = +(rt / 1000).toFixed(2);
+
     setStatus(`The correct word was: ${word}`);
     setRevealedAnswer(true);
     await addDoc(collection(db, "attempts"), {
@@ -124,7 +167,7 @@ export default function ReverseDictionaryGame() {
       userGuess: "",
       isCorrect: false,
       skipped: true,
-      reactionTime: rt,
+      reactionTime: reactionTimeSec,
       timestamp: new Date(),
     });
   };
@@ -161,25 +204,45 @@ export default function ReverseDictionaryGame() {
             min="1"
             value={lengthFilter}
             onChange={e => setLengthFilter(e.target.value)}
-            onKeyDown={e => ["e","E","+","-","."].includes(e.key) && e.preventDefault()}
+            onKeyDown={e => ["e","E","+","-",".",","].includes(e.key) && e.preventDefault()}
             className="mb-4 p-2 w-full border rounded bg-gray-700"
             placeholder="e.g. 5"
           />
-          <button onClick={startGame} className="w-full bg-green-600 py-2 rounded mb-2">Start Game</button>
-          <button onClick={async () => { setShowLeaderboard(true); await fetchLeaderboard(); }} className="w-full border border-yellow-500 py-2 rounded">Leaderboard</button>
+          <button onClick={startGame} className="w-full bg-green-600 py-2 rounded mb-2 cursor-pointer">Start Game</button>
+          <button onClick={async () => { setShowLeaderboard(true); await fetchLeaderboard(); }} className="w-full border border-yellow-500 py-2 rounded cursor-pointer">Leaderboard</button>
         </div>
       ) : showLeaderboard ? (
-        <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-md p-6">
+        <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-7xl p-6 overflow-x-auto">
           <h2 className="text-2xl font-bold mb-4 text-center">Leaderboard</h2>
-          <table className="w-full text-left">
-            <thead><tr><th>Player</th><th>High Score</th></tr></thead>
+          <table className="w-full text-sm border border-gray-700">
+            <thead>
+              <tr className="bg-gray-700 text-yellow-300">
+                <th className="border px-2 py-1">Player</th>
+                <th className="border px-2 py-1">High Score</th>
+                <th className="border px-2 py-1">Shortest Time (s)</th>
+                <th className="border px-2 py-1">Longest Time (s)</th>
+                <th className="border px-2 py-1">Avg Time (s)</th>
+                <th className="border px-2 py-1">Mistakes</th>
+                <th className="border px-2 py-1">Easiest Word</th>
+                <th className="border px-2 py-1">Hardest Word</th>
+              </tr>
+            </thead>
             <tbody>
-              {leaderboard.map(e => (
-                <tr key={e.nickname}><td>{e.nickname}</td><td>{e.score}</td></tr>
+              {leaderboard.map((e, i) => (
+                <tr key={i} className="text-center border-t border-gray-700">
+                  <td className="border px-2 py-1">{e.nickname}</td>
+                  <td className="border px-2 py-1">{e.score}</td>
+                  <td className="border px-2 py-1">{e.shortest}</td>
+                  <td className="border px-2 py-1">{e.longest}</td>
+                  <td className="border px-2 py-1">{e.average}</td>
+                  <td className="border px-2 py-1">{e.wrongs}</td>
+                  <td className="border px-2 py-1">{e.easiestWord}</td>
+                  <td className="border px-2 py-1">{e.hardestWord}</td>
+                </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={backToMenu} className="w-full mt-4 border py-2 rounded">Back to Menu</button>
+          <button onClick={backToMenu} className="w-full mt-4 border py-2 rounded cursor-pointer">Back to Menu</button>
         </div>
       ) : (
         <div className="w-full max-w-md">
@@ -193,14 +256,14 @@ export default function ReverseDictionaryGame() {
               className="mb-4 p-2 w-full border rounded bg-gray-700"
               placeholder="Guess the word..."
             />
-            <>  
+            <>
               {!revealedAnswer ? (
-                <> 
-                  <button onClick={checkGuess} className="w-full bg-blue-600 py-2 rounded mb-2">Submit</button>
-                  <button onClick={handleSkip} className="w-full border border-red-500 py-2 rounded mb-2">I don’t know</button>
+                <>
+                  <button onClick={checkGuess} className="w-full bg-blue-600 py-2 rounded mb-2 cursor-pointer">Submit</button>
+                  <button onClick={handleSkip} className="w-full border border-red-500 py-2 rounded mb-2 cursor-pointer">I don’t know</button>
                 </>
               ) : (
-                <button onClick={fetchWordAndDefinition} className="w-full bg-green-600 py-2 rounded mb-2">Next Word</button>
+                <button onClick={fetchWordAndDefinition} className="w-full bg-green-600 py-2 rounded mb-2 cursor-pointer">Next Word</button>
               )}
               {highScore !== null && (
                 <p className="text-center text-sm text-yellow-300 mb-2">Previous High Score: {highScore}</p>
@@ -208,7 +271,7 @@ export default function ReverseDictionaryGame() {
             </>
             {status && <p className="mt-2 text-center">{status}</p>}
             <p className="mt-2 text-sm text-center">Score: {score}</p>
-            <button onClick={backToMenu} className="mt-4 w-full border py-2 rounded">Back to Menu</button>
+            <button onClick={backToMenu} className="mt-4 w-full border py-2 rounded cursor-pointer">Back to Menu</button>
           </div>
         </div>
       )}
