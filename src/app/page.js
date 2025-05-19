@@ -129,6 +129,11 @@ export default function ReverseDictionaryGame() {
 
   const checkGuess = async () => {
     if (revealedAnswer) return;
+    if (!userGuess.trim()) {
+      setStatus("Please enter your guess.");
+      return;
+    }
+
     const isCorrect = userGuess.trim().toLowerCase() === word;
     const rt = Date.now() - (startTime || Date.now());
     const reactionTimeSec = +(rt / 1000).toFixed(2);
@@ -140,7 +145,9 @@ export default function ReverseDictionaryGame() {
       setScore(ns);
       if (highScore != null && ns > highScore) setHighScore(ns);
       await addDoc(collection(db, "scores"), { nickname, score: ns, timestamp: new Date() });
-    } else setStatus("Incorrect. Try again! ❌");
+    } else {
+      setStatus("Incorrect. Try again! ❌");
+    }
 
     await addDoc(collection(db, "attempts"), {
       nickname,
@@ -201,12 +208,17 @@ export default function ReverseDictionaryGame() {
           <label className="block mb-2">Word Length (optional):</label>
           <input
             type="number"
-            min="1"
+            min="3"
+            max="9"
             value={lengthFilter}
-            onChange={e => setLengthFilter(e.target.value)}
-            onKeyDown={e => ["e","E","+","-",".",","].includes(e.key) && e.preventDefault()}
+            onChange={e => {
+              const val = parseInt(e.target.value);
+              if (val > 9 || val < 3) return;
+              setLengthFilter(e.target.value);
+            }}
+            onKeyDown={e => ["e", "E", "+", "-", ".", ","].includes(e.key) && e.preventDefault()}
             className="mb-4 p-2 w-full border rounded bg-gray-700"
-            placeholder="e.g. 5"
+            placeholder="Max: 9"
           />
           <button onClick={startGame} className="w-full bg-green-600 py-2 rounded mb-2 cursor-pointer">Start Game</button>
           <button onClick={async () => { setShowLeaderboard(true); await fetchLeaderboard(); }} className="w-full border border-yellow-500 py-2 rounded cursor-pointer">Leaderboard</button>
