@@ -17,8 +17,8 @@ export default function ReverseDictionaryGame() {
   const [word, setWord] = useState("");
   const [definition, setDefinition] = useState("");
   const [userGuess, setUserGuess] = useState("");
-  const [status, setStatus] = useState("");
-  const [lengthFilter, setLengthFilter] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [wordLength, setWordLength] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [nickname, setNickname] = useState("");
   const [score, setScore] = useState(0);
@@ -29,17 +29,17 @@ export default function ReverseDictionaryGame() {
   const [revealedAnswer, setRevealedAnswer] = useState(false);
 
   const fetchWordAndDefinition = async () => {
-    setStatus("");
+    setFeedback("");
     setUserGuess("");
     setRevealedAnswer(false);
     try {
       let api = "https://random-word-api.vercel.app/api?words=1";
-      if (lengthFilter) api += `&length=${lengthFilter}`;
+      if (wordLength) api += `&length=${wordLength}`;
       let found = false;
       while (!found) {
         const [raw] = await fetch(api).then(r => r.json());
         const base = lemmatizer(raw);
-        if (lengthFilter && base.length !== +lengthFilter) continue;
+        if (wordLength && base.length !== +wordLength) continue;
         const data = await fetch(
           `https://api.dictionaryapi.dev/api/v2/entries/en/${base}`
         ).then(r => r.json());
@@ -102,15 +102,13 @@ export default function ReverseDictionaryGame() {
         ([w, arr]) => ({ word: w, avg: arr.reduce((a, b) => a + b, 0) / arr.length })
       );
       avgByWord.sort((a, b) => a.avg - b.avg);
-
-      const easiestWord = avgByWord.length >= 2 ? avgByWord[0].word      : "–";
+      
+      const easiestWord = avgByWord.length >= 2 ? avgByWord[0].word : "–";
       const hardestWord = avgByWord.length >= 2 ? avgByWord[avgByWord.length - 1].word : "–";
       const allTimes = avgByWord.flatMap(wt => wordTimes[wt.word]);
-      const shortest  = allTimes.length ? Math.min(...allTimes).toFixed(2) : "–";
-      const longest   = allTimes.length ? Math.max(...allTimes).toFixed(2) : "–";
-      const average   = allTimes.length
-        ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2)
-        : "–";
+      const shortest = allTimes.length ? Math.min(...allTimes).toFixed(2) : "–";
+      const longest = allTimes.length ? Math.max(...allTimes).toFixed(2) : "–";
+      const average = allTimes.length ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2) : "–";
 
       return { nickname, score, shortest, longest, average, wrongs, easiestWord, hardestWord };
     });
@@ -130,7 +128,7 @@ export default function ReverseDictionaryGame() {
   const checkGuess = async () => {
     if (revealedAnswer) return;
     if (!userGuess.trim()) {
-      setStatus("Please enter your guess.");
+      setFeedback("Please enter your guess.");
       return;
     }
 
@@ -139,14 +137,14 @@ export default function ReverseDictionaryGame() {
     const reactionTimeSec = +(rt / 1000).toFixed(2);
 
     if (isCorrect) {
-      setStatus("Correct! 🎉");
+      setFeedback("Correct! 🎉");
       setRevealedAnswer(true);
       const ns = score + 1;
       setScore(ns);
       if (highScore != null && ns > highScore) setHighScore(ns);
       await addDoc(collection(db, "scores"), { nickname, score: ns, timestamp: new Date() });
     } else {
-      setStatus("Incorrect. Try again! ❌");
+      setFeedback("Incorrect. Try again! ❌");
     }
 
     await addDoc(collection(db, "attempts"), {
@@ -165,7 +163,7 @@ export default function ReverseDictionaryGame() {
     const rt = Date.now() - (startTime || Date.now());
     const reactionTimeSec = +(rt / 1000).toFixed(2);
 
-    setStatus(`The correct word was: ${word}`);
+    setFeedback(`The correct word was: ${word}`);
     setRevealedAnswer(true);
     await addDoc(collection(db, "attempts"), {
       nickname,
@@ -181,12 +179,12 @@ export default function ReverseDictionaryGame() {
 
   const backToMenu = () => {
     setNickname("");
-    setLengthFilter("");
+    setWordLength("");
     setIsPlaying(false);
     setShowLeaderboard(false);
     setScore(0);
     setHighScore(null);
-    setStatus("");
+    setFeedback("");
     setUserGuess("");
     setWord("");
     setDefinition("");
@@ -210,11 +208,11 @@ export default function ReverseDictionaryGame() {
             type="number"
             min="3"
             max="9"
-            value={lengthFilter}
+            value={wordLength}
             onChange={e => {
               const val = parseInt(e.target.value);
               if (val > 9 || val < 3) return;
-              setLengthFilter(e.target.value);
+              setWordLength(e.target.value);
             }}
             onKeyDown={e => ["e", "E", "+", "-", ".", ","].includes(e.key) && e.preventDefault()}
             className="mb-4 p-2 w-full border rounded bg-gray-700"
@@ -285,7 +283,7 @@ export default function ReverseDictionaryGame() {
                 <p className="text-center text-sm text-yellow-300 mb-2">Previous High Score: {highScore}</p>
               )}
             </>
-            {status && <p className="mt-2 text-center">{status}</p>}
+            {feedback && <p className="mt-2 text-center">{feedback}</p>}
             <p className="mt-2 text-sm text-center">Score: {score}</p>
             <button onClick={backToMenu} className="mt-4 w-full border py-2 rounded cursor-pointer">Back to Menu</button>
           </div>
