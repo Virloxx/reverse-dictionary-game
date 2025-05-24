@@ -27,6 +27,8 @@ export default function ReverseDictionaryGame() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [startTime, setStartTime] = useState(null);
   const [revealedAnswer, setRevealedAnswer] = useState(false);
+  const [showWordsView, setShowWordsView] = useState(false);
+  const [wordStats, setWordStats] = useState([]);
 
   const fetchWordAndDefinition = async () => {
     setFeedback("");
@@ -115,6 +117,39 @@ export default function ReverseDictionaryGame() {
 
     list.sort((a, b) => b.score - a.score);
     setLeaderboard(list);
+  }
+
+  async function fetchWordStats() {
+    const attemptsSnap = await getDocs(collection(db, "attempts"));
+    const wordMap = {};
+
+    attemptsSnap.forEach(doc => {
+      const { word, isCorrect, reactionTime, skipped } = doc.data();
+      if (!word) return;
+      if (!wordMap[word]) {
+        wordMap[word] = { correct: 0, total: 0, mistakes: 0, times: [] };
+      }
+
+      if (skipped) return;
+
+      wordMap[word].total += 1;
+      if (isCorrect) {
+        wordMap[word].correct += 1;
+        if (reactionTime != null) wordMap[word].times.push(parseFloat(reactionTime));
+      } else {
+        wordMap[word].mistakes += 1;
+      }
+    });
+
+    const stats = Object.entries(wordMap).map(([word, data]) => {
+      const { correct, total, mistakes, times } = data;
+      const guessRate = total > 0 ? ((correct / total) * 100).toFixed(1) : "0.0";
+      const avgTime = times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(2) : "–";
+      return { word, guessRate, mistakes, avgTime };
+    });
+
+    stats.sort((a, b) => parseFloat(a.guessRate) - parseFloat(b.guessRate)); // most difficult first
+    setWordStats(stats);
   }
 
   const startGame = async () => {
@@ -223,40 +258,76 @@ export default function ReverseDictionaryGame() {
         </div>
       ) : showLeaderboard ? (
         <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-7xl p-6">
-          <h2 className="text-2xl font-bold mb-4 text-center">Leaderboard</h2>
+          <h2 className="text-2xl font-bold mb-4 text-center">
+            {showWordsView ? "Words" : "Leaderboard"}
+          </h2>
           <div className="overflow-x-auto sm:overflow-x-visible"> 
-            <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
-              <thead>
-                <tr className="bg-gray-700 text-yellow-300">
-                  <th className="border px-2 py-1">Player</th>
-                  <th className="border px-2 py-1">High Score</th>
-                  <th className="border px-2 py-1">Shortest Time (s)</th>
-                  <th className="border px-2 py-1">Longest Time (s)</th>
-                  <th className="border px-2 py-1">Avg Time (s)</th>
-                  <th className="border px-2 py-1">Mistakes</th>
-                  <th className="border px-2 py-1">Easiest Word</th>
-                  <th className="border px-2 py-1">Hardest Word</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard.map((e, i) => (
-                  <tr key={i} className="text-center border-t border-gray-700">
-                    <td className="border px-2 py-1">{e.nickname}</td>
-                    <td className="border px-2 py-1">{e.score}</td>
-                    <td className="border px-2 py-1">{e.shortest}</td>
-                    <td className="border px-2 py-1">{e.longest}</td>
-                    <td className="border px-2 py-1">{e.average}</td>
-                    <td className="border px-2 py-1">{e.wrongs}</td>
-                    <td className="border px-2 py-1">{e.easiestWord}</td>
-                    <td className="border px-2 py-1">{e.hardestWord}</td>
+            {!showWordsView ? (
+              <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
+                <thead>
+                  <tr className="bg-gray-700 text-yellow-300">
+                    <th className="border px-2 py-1">Player</th>
+                    <th className="border px-2 py-1">High Score</th>
+                    <th className="border px-2 py-1">Shortest Time (s)</th>
+                    <th className="border px-2 py-1">Longest Time (s)</th>
+                    <th className="border px-2 py-1">Avg Time (s)</th>
+                    <th className="border px-2 py-1">Mistakes</th>
+                    <th className="border px-2 py-1">Easiest Word</th>
+                    <th className="border px-2 py-1">Hardest Word</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {leaderboard.map((e, i) => (
+                    <tr key={i} className="text-center border-t border-gray-700">
+                      <td className="border px-2 py-1">{e.nickname}</td>
+                      <td className="border px-2 py-1">{e.score}</td>
+                      <td className="border px-2 py-1">{e.shortest}</td>
+                      <td className="border px-2 py-1">{e.longest}</td>
+                      <td className="border px-2 py-1">{e.average}</td>
+                      <td className="border px-2 py-1">{e.wrongs}</td>
+                      <td className="border px-2 py-1">{e.easiestWord}</td>
+                      <td className="border px-2 py-1">{e.hardestWord}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
+                <thead>
+                  <tr className="bg-gray-700 text-yellow-300">
+                    <th className="border px-2 py-1">Word</th>
+                    <th className="border px-2 py-1">% Guessed</th>
+                    <th className="border px-2 py-1">Mistakes</th>
+                    <th className="border px-2 py-1">Avg Time (s)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wordStats.map((e, i) => (
+                    <tr key={i} className="text-center border-t border-gray-700">
+                      <td className="border px-2 py-1">{e.word}</td>
+                      <td className="border px-2 py-1">{e.guessRate}</td>
+                      <td className="border px-2 py-1">{e.mistakes}</td>
+                      <td className="border px-2 py-1">{e.avgTime}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-          <button onClick={backToMenu} className="block mt-4 border py-2 px-4 rounded cursor-pointer mx-auto">
-            Back to Menu
-          </button>
+          <div className="mt-4 flex justify-center gap-4">
+            <button
+              onClick={() => {
+                if (!showWordsView) fetchWordStats();
+                setShowWordsView(!showWordsView);
+              }}
+              className="border py-2 px-4 rounded cursor-pointer"
+            >
+              {showWordsView ? "Leaderboard" : "Words"}
+            </button>
+            <button onClick={backToMenu} className="border py-2 px-4 rounded cursor-pointer">
+              Back to Menu
+            </button>
+          </div>
         </div>
       ) : (
         <div className="w-full max-w-md">
