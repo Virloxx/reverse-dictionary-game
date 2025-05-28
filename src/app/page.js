@@ -318,55 +318,67 @@ export default function ReverseDictionaryGame() {
           </h2>
           <div className="overflow-x-auto sm:overflow-x-visible"> 
             {!showWordsView ? (
-              <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
-                <thead>
-                  <tr className="bg-gray-700 text-yellow-300">
-                    <th className="border px-2 py-1">Player</th>
-                    <th className="border px-2 py-1">High Score</th>
-                    <th className="border px-2 py-1">Shortest Time [s]</th>
-                    <th className="border px-2 py-1">Longest Time [s]</th>
-                    <th className="border px-2 py-1">Average Time [s]</th>
-                    <th className="border px-2 py-1">Mistakes</th>
-                    <th className="border px-2 py-1">Easiest Word</th>
-                    <th className="border px-2 py-1">Hardest Word</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((e, i) => (
-                    <tr key={i} className="text-center border-t border-gray-700">
-                      <td className="border px-2 py-1">{e.nickname}</td>
-                      <td className="border px-2 py-1">{e.score}</td>
-                      <td className="border px-2 py-1">{e.shortest}</td>
-                      <td className="border px-2 py-1">{e.longest}</td>
-                      <td className="border px-2 py-1">{e.average}</td>
-                      <td className="border px-2 py-1">{e.wrongs}</td>
-                      <td className="border px-2 py-1">{e.easiestWord}</td>
-                      <td className="border px-2 py-1">{e.hardestWord}</td>
+              leaderboard.length === 0 ? (
+                <p className="text-center text-gray-400 py-4">
+                  No player data available. Start playing to be featured here!
+                </p>
+              ) : (
+                <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-700 text-yellow-300">
+                      <th className="border px-2 py-1">Player</th>
+                      <th className="border px-2 py-1">High Score</th>
+                      <th className="border px-2 py-1">Shortest Time [s]</th>
+                      <th className="border px-2 py-1">Longest Time [s]</th>
+                      <th className="border px-2 py-1">Average Time [s]</th>
+                      <th className="border px-2 py-1">Mistakes</th>
+                      <th className="border px-2 py-1">Easiest Word</th>
+                      <th className="border px-2 py-1">Hardest Word</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((e, i) => (
+                      <tr key={i} className="text-center border-t border-gray-700">
+                        <td className="border px-2 py-1">{e.nickname}</td>
+                        <td className="border px-2 py-1">{e.score}</td>
+                        <td className="border px-2 py-1">{e.shortest}</td>
+                        <td className="border px-2 py-1">{e.longest}</td>
+                        <td className="border px-2 py-1">{e.average}</td>
+                        <td className="border px-2 py-1">{e.wrongs}</td>
+                        <td className="border px-2 py-1">{e.easiestWord}</td>
+                        <td className="border px-2 py-1">{e.hardestWord}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             ) : (
-              <table className="text-sm border border-gray-700 whitespace-nowrap">
-                <thead>
-                  <tr className="bg-gray-700 text-yellow-300">
-                    <th className="border px-2 py-1">Word</th>
-                    <th className="border px-2 py-1">Guessed</th>
-                    <th className="border px-2 py-1">Mistakes</th>
-                    <th className="border px-2 py-1">Average Time [s]</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wordStats.map((e, i) => (
-                    <tr key={i} className="text-center border-t border-gray-700">
-                      <td className="border px-2 py-1">{e.word}</td>
-                      <td className="border px-2 py-1">{e.guessRate}%</td>
-                      <td className="border px-2 py-1">{e.mistakes}</td>
-                      <td className="border px-2 py-1">{e.avgTime}</td>
+              wordStats.length === 0 ? (
+                <p className="text-center text-gray-400 py-4">
+                  No word data available. Try playing a few rounds first!
+                </p>
+              ) : (
+                <table className="text-sm border border-gray-700 whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-700 text-yellow-300">
+                      <th className="border px-2 py-1">Word</th>
+                      <th className="border px-2 py-1">Guessed</th>
+                      <th className="border px-2 py-1">Mistakes</th>
+                      <th className="border px-2 py-1">Average Time [s]</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {wordStats.map((e, i) => (
+                      <tr key={i} className="text-center border-t border-gray-700">
+                        <td className="border px-2 py-1">{e.word}</td>
+                        <td className="border px-2 py-1">{e.guessRate}%</td>
+                        <td className="border px-2 py-1">{e.mistakes}</td>
+                        <td className="border px-2 py-1">{e.avgTime}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             )}
           </div>
           <div className="mt-4 flex justify-center gap-4">
