@@ -14,19 +14,19 @@ import { db } from "@/utilities/firebase.config";
 import lemmatizer from "lemmatizer";
 
 export default function ReverseDictionaryGame() {
+  const [nickname, setNickname] = useState("");
+  const [wordLength, setWordLength] = useState("");
   const [word, setWord] = useState("");
   const [definition, setDefinition] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
   const [userGuess, setUserGuess] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [wordLength, setWordLength] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [nickname, setNickname] = useState("");
+  const [revealedAnswer, setRevealedAnswer] = useState(false);
   const [score, setScore] = useState(0);
+  const [startTime, setStartTime] = useState(null);
   const [highScore, setHighScore] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [startTime, setStartTime] = useState(null);
-  const [revealedAnswer, setRevealedAnswer] = useState(false);
   const [showWordsView, setShowWordsView] = useState(false);
   const [wordStats, setWordStats] = useState([]);
 
@@ -148,31 +148,61 @@ export default function ReverseDictionaryGame() {
     const wordMap = {};
 
     attemptsSnap.forEach(doc => {
-      const { word, isCorrect, reactionTime, skipped } = doc.data();
-      if (!word) return;
+      const { word, nickname, isCorrect, skipped, reactionTime } = doc.data();
+      if (!word || !nickname) return;
+
       if (!wordMap[word]) {
-        wordMap[word] = { correct: 0, total: 0, mistakes: 0, times: [] };
+        wordMap[word] = {
+          attempted: new Set(),   // all players who tried this word (including skips)
+          correct: new Set(),     // players who ever guessed it correctly
+          mistakes: 0,            // total wrong submissions across all players
+          times: [],              // reaction times for correct guesses
+        };
       }
 
-      if (skipped) return;
+      const entry = wordMap[word];
+      // Mark that this player attempted it
+      entry.attempted.add(nickname);
 
-      wordMap[word].total += 1;
+      if (skipped) {
+        // we count the skip as “attempted” but not a correct guess
+        return;
+      }
+
       if (isCorrect) {
-        wordMap[word].correct += 1;
-        if (reactionTime != null) wordMap[word].times.push(parseFloat(reactionTime));
+        entry.correct.add(nickname);
+        if (reactionTime != null) {
+          entry.times.push(parseFloat(reactionTime));
+        }
       } else {
-        wordMap[word].mistakes += 1;
+        // a wrong submission
+        entry.mistakes += 1;
       }
     });
 
+    // Convert to array and compute the metrics
     const stats = Object.entries(wordMap).map(([word, data]) => {
-      const { correct, total, mistakes, times } = data;
-      const guessRate = total > 0 ? ((correct / total) * 100).toFixed(1) : "0.0";
-      const avgTime = times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(2) : "–";
-      return { word, guessRate, mistakes, avgTime };
+      const totalPlayers = data.attempted.size;
+      const correctPlayers = data.correct.size;
+      const guessRate = totalPlayers
+        ? ((correctPlayers / totalPlayers) * 100).toFixed(1)
+        : "0.0";
+
+      const avgTime = data.times.length
+        ? (data.times.reduce((a, b) => a + b, 0) / data.times.length).toFixed(2)
+        : "–";
+
+      return {
+        word,
+        guessRate,
+        mistakes: data.mistakes,
+        avgTime,
+      };
     });
 
-    stats.sort((a, b) => parseFloat(a.guessRate) - parseFloat(b.guessRate)); // most difficult first
+    // Sort from best % guessed to worst
+    stats.sort((a, b) => parseFloat(b.guessRate) - parseFloat(a.guessRate));
+
     setWordStats(stats);
   }
 
@@ -293,9 +323,9 @@ export default function ReverseDictionaryGame() {
                   <tr className="bg-gray-700 text-yellow-300">
                     <th className="border px-2 py-1">Player</th>
                     <th className="border px-2 py-1">High Score</th>
-                    <th className="border px-2 py-1">Shortest Time (s)</th>
-                    <th className="border px-2 py-1">Longest Time (s)</th>
-                    <th className="border px-2 py-1">Avg Time (s)</th>
+                    <th className="border px-2 py-1">Shortest Time [s]</th>
+                    <th className="border px-2 py-1">Longest Time [s]</th>
+                    <th className="border px-2 py-1">Average Time [s]</th>
                     <th className="border px-2 py-1">Mistakes</th>
                     <th className="border px-2 py-1">Easiest Word</th>
                     <th className="border px-2 py-1">Hardest Word</th>
@@ -321,16 +351,16 @@ export default function ReverseDictionaryGame() {
                 <thead>
                   <tr className="bg-gray-700 text-yellow-300">
                     <th className="border px-2 py-1">Word</th>
-                    <th className="border px-2 py-1">% Guessed</th>
+                    <th className="border px-2 py-1">Guessed</th>
                     <th className="border px-2 py-1">Mistakes</th>
-                    <th className="border px-2 py-1">Avg Time (s)</th>
+                    <th className="border px-2 py-1">Average Time [s]</th>
                   </tr>
                 </thead>
                 <tbody>
                   {wordStats.map((e, i) => (
                     <tr key={i} className="text-center border-t border-gray-700">
                       <td className="border px-2 py-1">{e.word}</td>
-                      <td className="border px-2 py-1">{e.guessRate}</td>
+                      <td className="border px-2 py-1">{e.guessRate}%</td>
                       <td className="border px-2 py-1">{e.mistakes}</td>
                       <td className="border px-2 py-1">{e.avgTime}</td>
                     </tr>
