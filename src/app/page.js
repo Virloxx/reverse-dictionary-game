@@ -405,6 +405,9 @@ export default function ReverseDictionaryGame() {
             <input
               value={userGuess}
               onChange={e => setUserGuess(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") checkGuess();
+              }}
               className="mb-4 p-2 w-full border rounded bg-gray-700"
               placeholder="Guess the word..."
             />
