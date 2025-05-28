@@ -76,47 +76,71 @@ export default function ReverseDictionaryGame() {
     ]);
 
     const stats = {};
+
+    // Collect scores
     scoresSnap.forEach(doc => {
       const { nickname, score } = doc.data();
-      if (!stats[nickname]) stats[nickname] = { score: 0, wordTimes: {}, wrongs: 0 };
+      if (!stats[nickname]) stats[nickname] = { score: 0, wordData: {}, mistakes: 0 };
       stats[nickname].score = Math.max(stats[nickname].score, score);
     });
 
+    // Collect attempts data
     attemptsSnap.forEach(doc => {
-      const { nickname, reactionTime, skipped, isCorrect, word } = doc.data();
-      if (!stats[nickname]) stats[nickname] = { score: 0, wordTimes: {}, wrongs: 0 };
+      const { nickname, word, skipped, isCorrect, reactionTime } = doc.data();
+      if (!nickname || !word) return;
+      if (!stats[nickname]) stats[nickname] = { score: 0, wordData: {}, mistakes: 0 };
 
-      if (reactionTime != null && skipped !== true) {
-        const n = nickname;
-        stats[n].wordTimes[word] = stats[n].wordTimes[word] || [];
-        stats[n].wordTimes[word].push(parseFloat(reactionTime));
+      const player = stats[nickname];
+      if (!player.wordData[word]) player.wordData[word] = { times: [], mistakes: 0, guessed: false };
 
-        if (!isCorrect) {
-          stats[n].wrongs += 1;
-        }
+      if (skipped) return;
+
+      const time = parseFloat(reactionTime);
+      if (isCorrect) {
+        player.wordData[word].times.push(time);
+        player.wordData[word].guessed = true;
+      } else {
+        player.wordData[word].mistakes += 1;
+        player.mistakes += 1;
       }
     });
 
-    const list = Object.entries(stats).map(([nickname, data]) => {
-      const { score, wordTimes, wrongs } = data;
+    const leaderboard = Object.entries(stats).map(([nickname, data]) => {
+      const { score, wordData, mistakes } = data;
 
-      const avgByWord = Object.entries(wordTimes).map(
-        ([w, arr]) => ({ word: w, avg: arr.reduce((a, b) => a + b, 0) / arr.length })
-      );
-      avgByWord.sort((a, b) => a.avg - b.avg);
-      
-      const easiestWord = avgByWord.length >= 2 ? avgByWord[0].word : "–";
-      const hardestWord = avgByWord.length >= 2 ? avgByWord[avgByWord.length - 1].word : "–";
-      const allTimes = avgByWord.flatMap(wt => wordTimes[wt.word]);
+      const guessedWords = Object.entries(wordData).filter(([, v]) => v.guessed);
+      const allTimes = guessedWords.flatMap(([, v]) => v.times);
+
       const shortest = allTimes.length ? Math.min(...allTimes).toFixed(2) : "–";
       const longest = allTimes.length ? Math.max(...allTimes).toFixed(2) : "–";
       const average = allTimes.length ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2) : "–";
 
-      return { nickname, score, shortest, longest, average, wrongs, easiestWord, hardestWord };
+      const wordDifficulty = guessedWords.map(([word, data]) => {
+        const avgTime = data.times.length ? data.times.reduce((a, b) => a + b, 0) / data.times.length : Infinity;
+        return {
+          word,
+          difficultyScore: avgTime + data.mistakes * 5, // Weighted: 1s time + 5 per mistake
+        };
+      });
+
+      wordDifficulty.sort((a, b) => a.difficultyScore - b.difficultyScore);
+      const easiestWord = wordDifficulty[0]?.word ?? "–";
+      const hardestWord = wordDifficulty[wordDifficulty.length - 1]?.word ?? "–";
+
+      return {
+        nickname,
+        score,
+        shortest,
+        longest,
+        average,
+        wrongs: mistakes,
+        easiestWord,
+        hardestWord,
+      };
     });
 
-    list.sort((a, b) => b.score - a.score);
-    setLeaderboard(list);
+    leaderboard.sort((a, b) => b.score - a.score);
+    setLeaderboard(leaderboard);
   }
 
   async function fetchWordStats() {
@@ -217,6 +241,7 @@ export default function ReverseDictionaryGame() {
     setWordLength("");
     setIsPlaying(false);
     setShowLeaderboard(false);
+    setShowWordsView(false);
     setScore(0);
     setHighScore(null);
     setFeedback("");
@@ -257,7 +282,7 @@ export default function ReverseDictionaryGame() {
           <button onClick={async () => { setShowLeaderboard(true); await fetchLeaderboard(); }} className="w-full border border-yellow-500 py-2 rounded cursor-pointer">Leaderboard</button>
         </div>
       ) : showLeaderboard ? (
-        <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-7xl p-6">
+        <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-max p-6">
           <h2 className="text-2xl font-bold mb-4 text-center">
             {showWordsView ? "Words" : "Leaderboard"}
           </h2>
@@ -292,7 +317,7 @@ export default function ReverseDictionaryGame() {
                 </tbody>
               </table>
             ) : (
-              <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
+              <table className="text-sm border border-gray-700 whitespace-nowrap">
                 <thead>
                   <tr className="bg-gray-700 text-yellow-300">
                     <th className="border px-2 py-1">Word</th>
