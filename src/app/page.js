@@ -5,6 +5,8 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
+  doc,
   query,
   where,
   orderBy,
@@ -12,7 +14,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/utilities/firebase.config";
 import lemmatizer from "lemmatizer";
-import TEST_WORDS from "@/utilities/wordPool";
 
 export default function ReverseDictionaryGame() {
   const [nickname, setNickname] = useState("");
@@ -34,6 +35,11 @@ export default function ReverseDictionaryGame() {
   const [shuffledPool, setShuffledPool] = useState([]);
   const [poolIndex, setPoolIndex] = useState(0);
   const [testCompleted, setTestCompleted] = useState(false);
+
+  const fetchWordPool = async () => {
+    const poolDoc = await getDoc(doc(db, "config", "wordPool"));
+    return poolDoc.exists() ? poolDoc.data().words : [];
+  };
 
   const fetchWordAndDefinition = async () => {
     setFeedback("");
@@ -75,7 +81,7 @@ export default function ReverseDictionaryGame() {
       const poolWord = poolArray[idx];
       const data = await fetch(
         `https://api.dictionaryapi.dev/api/v2/entries/en/${poolWord}`
-      ).then((r) => r.json());
+      ).then(r => r.json());
       if (
         Array.isArray(data) &&
         data[0]?.meanings?.[0]?.definitions?.[0]?.definition
@@ -223,8 +229,10 @@ export default function ReverseDictionaryGame() {
     setScore(0);
     setIsPlaying(true);
     setTestCompleted(false);
+
     if (mode === "test") {
-      const shuffled = [...TEST_WORDS].sort(() => Math.random() - 0.5);
+      const pool = await fetchWordPool();
+      const shuffled = [...pool].sort(() => Math.random() - 0.5);
       setShuffledPool(shuffled);
       setPoolIndex(0);
       await fetchWordAndDefinitionTestMode(shuffled, 0);
@@ -448,7 +456,7 @@ export default function ReverseDictionaryGame() {
           <div className="bg-gray-800 shadow-md rounded-lg p-6">
             {mode === "test" && !testCompleted && (
               <p className="text-sm text-gray-300 mb-2">
-                Round {poolIndex + 1} of {TEST_WORDS.length}
+                Round {poolIndex + 1} of {shuffledPool.length}
               </p>
             )}
             <p className="mb-4 font-semibold">Definition:</p>
@@ -463,8 +471,7 @@ export default function ReverseDictionaryGame() {
               className="mb-4 p-2 w-full border rounded bg-gray-700"
               placeholder="Guess the word..."
             />
-            <>
-              {!revealedAnswer && !testCompleted ? (
+            <>{!revealedAnswer && !testCompleted ? (
                 <>
                   <button onClick={checkGuess} className="w-full bg-blue-600 py-2 rounded mb-2 cursor-pointer">Submit</button>
                   <button onClick={handleSkip} className="w-full border border-red-500 py-2 rounded mb-2 cursor-pointer">I don’t know</button>
