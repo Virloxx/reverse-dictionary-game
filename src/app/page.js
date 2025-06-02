@@ -35,6 +35,7 @@ export default function ReverseDictionaryGame() {
   const [shuffledPool, setShuffledPool] = useState([]);
   const [poolIndex, setPoolIndex] = useState(0);
   const [testCompleted, setTestCompleted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fetchWordPool = async () => {
     const poolDoc = await getDoc(doc(db, "config", "wordPool"));
@@ -220,7 +221,11 @@ export default function ReverseDictionaryGame() {
   }
 
   const startGame = async () => {
-    if (!nickname.trim()) return alert("Please enter a nickname to start.");
+    if (!nickname.trim()) {
+      setErrorMessage("Please enter a nickname to start.");
+      return;
+    }
+    setErrorMessage("");
     await fetchHighScore(nickname);
     setScore(0);
     setIsPlaying(true);
@@ -309,6 +314,7 @@ export default function ReverseDictionaryGame() {
     setTestCompleted(false);
     setShuffledPool([]);
     setPoolIndex(0);
+    setErrorMessage("");
   };
 
   return (
@@ -319,10 +325,16 @@ export default function ReverseDictionaryGame() {
           <label className="block mb-2 text-gray-200">Nickname:</label>
           <input
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="mb-4 p-3 w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+            onChange={(e) => {
+              setNickname(e.target.value);
+              if (errorMessage) setErrorMessage("");
+            }}
+            className="mb-2 p-3 w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
             placeholder="Enter nickname"
           />
+          {errorMessage && (
+            <p className="text-red-500 text-sm mb-4">{errorMessage}</p>
+          )}
           <label className="block mb-2 text-gray-200">Game Mode:</label>
           <div className="flex space-x-3 mb-6">
             <button
