@@ -327,7 +327,7 @@ export default function ReverseDictionaryGame() {
           <div className="flex space-x-3 mb-6">
             <button
               onClick={() => setMode("test")}
-              className={`flex-1 py-3 rounded-lg text-white font-semibold transition ${
+              className={`flex-1 py-3 rounded-lg text-white font-semibold transition cursor-pointer ${
                 mode === "test" ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-600"
               } focus:outline-none focus:ring-2 focus:ring-green-400`}
             >
@@ -335,7 +335,7 @@ export default function ReverseDictionaryGame() {
             </button>
             <button
               onClick={() => setMode("random")}
-              className={`flex-1 py-3 rounded-lg text-white font-semibold transition ${
+              className={`flex-1 py-3 rounded-lg text-white font-semibold transition cursor-pointer ${
                 mode === "random" ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-600"
               } focus:outline-none focus:ring-2 focus:ring-green-400`}
             >
@@ -362,7 +362,7 @@ export default function ReverseDictionaryGame() {
           />
           <button
             onClick={startGame}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition cursor-pointer mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
           >
             Start Game
           </button>
@@ -371,7 +371,7 @@ export default function ReverseDictionaryGame() {
               setShowLeaderboard(true);
               await fetchLeaderboard();
             }}
-            className="w-full border border-yellow-500 hover:border-yellow-400 text-yellow-500 hover:text-yellow-400 py-3 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            className="w-full border border-yellow-500 hover:border-yellow-400 text-yellow-500 hover:text-yellow-400 py-3 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-400"
           >
             Leaderboard
           </button>
@@ -460,13 +460,13 @@ export default function ReverseDictionaryGame() {
                 if (!showWordsView) fetchWordStats();
                 setShowWordsView(!showWordsView);
               }}
-              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
               {showWordsView ? "Leaderboard" : "Words"}
             </button>
             <button
               onClick={backToMenu}
-              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
               Back to Menu
             </button>
@@ -504,13 +504,13 @@ export default function ReverseDictionaryGame() {
                 <>
                   <button
                     onClick={checkGuess}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition cursor-pointer mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     Submit
                   </button>
                   <button
                     onClick={handleSkip}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     I don’t know
                   </button>
@@ -526,7 +526,7 @@ export default function ReverseDictionaryGame() {
                       await fetchWordAndDefinition();
                     }
                   }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition cursor-pointer"
                 >
                   Next Word
                 </button>
@@ -543,7 +543,7 @@ export default function ReverseDictionaryGame() {
                   </p>
                   <button
                     onClick={backToMenu}
-                    className="mx-auto block bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-semibold transition"
+                    className="mx-auto block bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-semibold transition cursor-pointer"
                   >
                     Back to Menu
                   </button>
@@ -562,7 +562,7 @@ export default function ReverseDictionaryGame() {
             {mode !== "test" && (
               <button
                 onClick={backToMenu}
-                className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Back to Menu
               </button>
