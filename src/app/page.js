@@ -50,13 +50,16 @@ export default function ReverseDictionaryGame() {
       if (wordLength) api += `&length=${wordLength}`;
       let found = false;
       while (!found) {
-        const [raw] = await fetch(api).then(r => r.json());
+        const [raw] = await fetch(api).then((r) => r.json());
         const base = lemmatizer(raw);
         if (wordLength && base.length !== +wordLength) continue;
         const data = await fetch(
           `https://api.dictionaryapi.dev/api/v2/entries/en/${base}`
-        ).then(r => r.json());
-        if (Array.isArray(data) && data[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
+        ).then((r) => r.json());
+        if (
+          Array.isArray(data) &&
+          data[0]?.meanings?.[0]?.definitions?.[0]?.definition
+        ) {
           setWord(base);
           setDefinition(data[0].meanings[0].definitions[0].definition);
           found = true;
@@ -73,7 +76,7 @@ export default function ReverseDictionaryGame() {
     setUserGuess("");
     setRevealedAnswer(false);
     if (idx >= poolArray.length) {
-      setFeedback(`Test complete! You’ve gone through all ${poolIndex + 1} words.`);
+      setFeedback(`You’ve gone through all ${poolIndex + 1} words.`);
       setTestCompleted(true);
       return;
     }
@@ -81,7 +84,7 @@ export default function ReverseDictionaryGame() {
       const poolWord = poolArray[idx];
       const data = await fetch(
         `https://api.dictionaryapi.dev/api/v2/entries/en/${poolWord}`
-      ).then(r => r.json());
+      ).then((r) => r.json());
       if (
         Array.isArray(data) &&
         data[0]?.meanings?.[0]?.definitions?.[0]?.definition
@@ -112,26 +115,20 @@ export default function ReverseDictionaryGame() {
 
   async function fetchLeaderboard() {
     const scoresRef = collection(db, "scores");
-    const scoresQ = query(
-      scoresRef,
-      where("mode", "==", mode)
-    );
+    const scoresQ = query(scoresRef, where("mode", "==", mode));
     const attemptsRef = collection(db, "attempts");
-    const attemptsQ = query(
-      attemptsRef,
-      where("mode", "==", mode)
-    );
+    const attemptsQ = query(attemptsRef, where("mode", "==", mode));
     const [scoresSnap, attemptsSnap] = await Promise.all([
       getDocs(scoresQ),
       getDocs(attemptsQ),
     ]);
     const stats = {};
-    scoresSnap.forEach(doc => {
+    scoresSnap.forEach((doc) => {
       const { nickname, score } = doc.data();
       if (!stats[nickname]) stats[nickname] = { score: 0, wordData: {}, mistakes: 0 };
       stats[nickname].score = Math.max(stats[nickname].score, score);
     });
-    attemptsSnap.forEach(doc => {
+    attemptsSnap.forEach((doc) => {
       const { nickname, word, skipped, isCorrect, reactionTime } = doc.data();
       if (!nickname || !word) return;
       if (!stats[nickname]) stats[nickname] = { score: 0, wordData: {}, mistakes: 0 };
@@ -156,8 +153,10 @@ export default function ReverseDictionaryGame() {
       const allTimes = guessedWords.flatMap(([, v]) => v.times);
       const shortest = allTimes.length ? Math.min(...allTimes).toFixed(2) : "–";
       const longest = allTimes.length ? Math.max(...allTimes).toFixed(2) : "–";
-      const average = allTimes.length ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2) : "–";
-      
+      const average = allTimes.length
+        ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2)
+        : "–";
+
       const wordDifficulty = guessedWords.map(([word, data2]) => {
         const avgTime = data2.times.length
           ? data2.times.reduce((a, b) => a + b, 0) / data2.times.length
@@ -184,10 +183,7 @@ export default function ReverseDictionaryGame() {
 
   async function fetchWordStats() {
     const attemptsRef = collection(db, "attempts");
-    const attemptsQ = query(
-      attemptsRef,
-      where("mode", "==", mode)
-    );
+    const attemptsQ = query(attemptsRef, where("mode", "==", mode));
     const attemptsSnap = await getDocs(attemptsQ);
     const wordMap = {};
     attemptsSnap.forEach((doc) => {
@@ -315,166 +311,209 @@ export default function ReverseDictionaryGame() {
     setPoolIndex(0);
   };
 
-  const currentRound = mode === "test" ? poolIndex + 1 : null;
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       {!isPlaying && !showLeaderboard ? (
-        <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-md p-6">
-          <h1 className="text-3xl font-bold mb-4 text-center">Reverse Dictionary Game</h1>
-          <label className="block mb-2">Nickname:</label>
+        <div className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-8">
+          <h1 className="text-4xl font-bold mb-6 text-center text-white">Reverse Dictionary</h1>
+          <label className="block mb-2 text-gray-200">Nickname:</label>
           <input
             value={nickname}
-            onChange={e => setNickname(e.target.value)}
-            className="mb-4 p-2 w-full border rounded bg-gray-700"
+            onChange={(e) => setNickname(e.target.value)}
+            className="mb-4 p-3 w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
             placeholder="Enter nickname"
           />
-          <label className="block mb-2">Game Mode:</label>
-          <div className="flex space-x-2 mb-4">
+          <label className="block mb-2 text-gray-200">Game Mode:</label>
+          <div className="flex space-x-3 mb-6">
             <button
               onClick={() => setMode("test")}
-              className={`flex-1 py-2 rounded cursor-pointer ${
-                mode === "test" ? "bg-green-600" : "bg-gray-700"
-              }`}
+              className={`flex-1 py-3 rounded-lg text-white font-semibold transition ${
+                mode === "test" ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-600"
+              } focus:outline-none focus:ring-2 focus:ring-green-400`}
             >
               Test Mode
             </button>
             <button
               onClick={() => setMode("random")}
-              className={`flex-1 py-2 rounded cursor-pointer ${
-                mode === "random" ? "bg-green-600" : "bg-gray-700"
-              }`}
+              className={`flex-1 py-3 rounded-lg text-white font-semibold transition ${
+                mode === "random" ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-600"
+              } focus:outline-none focus:ring-2 focus:ring-green-400`}
             >
               Random Mode
             </button>
           </div>
-          <label className="block mb-2">Word Length (optional):</label>
+          <label className="block mb-2 text-gray-200">Word Length (optional):</label>
           <input
             type="number"
             min="3"
             max="9"
             value={wordLength}
-            onChange={e => {
+            onChange={(e) => {
               const val = parseInt(e.target.value);
               if (val > 9 || val < 3) return;
               setWordLength(e.target.value);
             }}
-            onKeyDown={e => ["e", "E", "+", "-", ".", ","].includes(e.key) && e.preventDefault()}
-            className="mb-4 p-2 w-full border rounded bg-gray-700"
-            placeholder="Max: 9"
+            onKeyDown={(e) => ["e", "E", "+", "-", ".", ","].includes(e.key) && e.preventDefault()}
+            className={`mb-6 p-3 w-full rounded-lg text-white placeholder-gray-400 focus:outline-none ${
+              mode === "test" ? "bg-gray-600 cursor-not-allowed" : "bg-gray-700 focus:ring-2 focus:ring-green-500"
+            }`}
+            placeholder={mode === "test" ? "(disabled in Test Mode)" : "Max: 9"}
             disabled={mode === "test"}
           />
-          <button onClick={startGame} className="w-full bg-green-600 py-2 rounded mb-2 cursor-pointer">Start Game</button>
-          <button onClick={async () => { setShowLeaderboard(true); await fetchLeaderboard(); }} className="w-full border border-yellow-500 py-2 rounded cursor-pointer">Leaderboard</button>
+          <button
+            onClick={startGame}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+          >
+            Start Game
+          </button>
+          <button
+            onClick={async () => {
+              setShowLeaderboard(true);
+              await fetchLeaderboard();
+            }}
+            className="w-full border border-yellow-500 hover:border-yellow-400 text-yellow-500 hover:text-yellow-400 py-3 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          >
+            Leaderboard
+          </button>
         </div>
       ) : showLeaderboard ? (
-        <div className="bg-gray-800 shadow-md rounded-lg w-full max-w-max p-6">
-          <h2 className="text-2xl font-bold mb-4 text-center">
-            {showWordsView ? "Words" : "Leaderboard"}
+        <div className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-4xl p-8">
+          <h2 className="text-3xl font-bold mb-6 text-center text-white">
+            {showWordsView ? "Word Statistics" : "Leaderboard"}
           </h2>
-          <div className="overflow-x-auto sm:overflow-x-visible"> 
+          <div className="overflow-x-auto mb-6">
             {!showWordsView ? (
               leaderboard.length === 0 ? (
-                <p className="text-center text-gray-400 py-4">
+                <p className="text-center text-gray-400 py-8">
                   No player data available. Start playing to be featured here!
                 </p>
               ) : (
-                <table className="min-w-full text-sm border border-gray-700 whitespace-nowrap">
+                <table className="min-w-full text-gray-200 text-sm">
                   <thead>
-                    <tr className="bg-gray-700 text-yellow-300">
-                      <th className="border px-2 py-1">Player</th>
-                      <th className="border px-2 py-1">High Score</th>
-                      <th className="border px-2 py-1">Shortest Time [s]</th>
-                      <th className="border px-2 py-1">Longest Time [s]</th>
-                      <th className="border px-2 py-1">Average Time [s]</th>
-                      <th className="border px-2 py-1">Mistakes</th>
-                      <th className="border px-2 py-1">Easiest Word</th>
-                      <th className="border px-2 py-1">Hardest Word</th>
+                    <tr className="bg-gray-700">
+                      <th className="px-4 py-3 text-center">Player</th>
+                      <th className="px-4 py-3 text-center">High Score</th>
+                      <th className="px-4 py-3 text-center">Shortest [s]</th>
+                      <th className="px-4 py-3 text-center">Longest [s]</th>
+                      <th className="px-4 py-3 text-center">Average [s]</th>
+                      <th className="px-4 py-3 text-center">Mistakes</th>
+                      <th className="px-4 py-3 text-center">Easiest Word</th>
+                      <th className="px-4 py-3 text-center">Hardest Word</th>
                     </tr>
                   </thead>
                   <tbody>
                     {leaderboard.map((e, i) => (
-                      <tr key={i} className="text-center border-t border-gray-700">
-                        <td className="border px-2 py-1">{e.nickname}</td>
-                        <td className="border px-2 py-1">{e.score}</td>
-                        <td className="border px-2 py-1">{e.shortest}</td>
-                        <td className="border px-2 py-1">{e.longest}</td>
-                        <td className="border px-2 py-1">{e.average}</td>
-                        <td className="border px-2 py-1">{e.wrongs}</td>
-                        <td className="border px-2 py-1">{e.easiestWord}</td>
-                        <td className="border px-2 py-1">{e.hardestWord}</td>
+                      <tr
+                        key={i}
+                        className={`border-t ${
+                          i % 2 === 0 ? "bg-gray-800" : "bg-gray-700"
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-center">{e.nickname}</td>
+                        <td className="px-4 py-3 text-center">{e.score}</td>
+                        <td className="px-4 py-3 text-center">{e.shortest}</td>
+                        <td className="px-4 py-3 text-center">{e.longest}</td>
+                        <td className="px-4 py-3 text-center">{e.average}</td>
+                        <td className="px-4 py-3 text-center">{e.wrongs}</td>
+                        <td className="px-4 py-3 text-center">{e.easiestWord}</td>
+                        <td className="px-4 py-3 text-center">{e.hardestWord}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )
             ) : wordStats.length === 0 ? (
-              <p className="text-center text-gray-400 py-4">
+              <p className="text-center text-gray-400 py-8">
                 No word data available. Try playing a few rounds first!
               </p>
             ) : (
-              <table className="text-sm border border-gray-700 whitespace-nowrap">
+              <table className="min-w-full text-gray-200 text-sm">
                 <thead>
-                  <tr className="bg-gray-700 text-yellow-300">
-                    <th className="border px-2 py-1">Word</th>
-                    <th className="border px-2 py-1">Guessed</th>
-                    <th className="border px-2 py-1">Mistakes</th>
-                    <th className="border px-2 py-1">Average Time [s]</th>
+                  <tr className="bg-gray-700">
+                    <th className="px-4 py-3 text-center">Word</th>
+                    <th className="px-4 py-3 text-center">Guessed (%)</th>
+                    <th className="px-4 py-3 text-center">Mistakes</th>
+                    <th className="px-4 py-3 text-center">Average Time [s]</th>
                   </tr>
                 </thead>
                 <tbody>
                   {wordStats.map((e, i) => (
-                    <tr key={i} className="text-center border-t border-gray-700">
-                      <td className="border px-2 py-1">{e.word}</td>
-                      <td className="border px-2 py-1">{e.guessRate}%</td>
-                      <td className="border px-2 py-1">{e.mistakes}</td>
-                      <td className="border px-2 py-1">{e.avgTime}</td>
+                    <tr
+                      key={i}
+                      className={`border-t ${
+                        i % 2 === 0 ? "bg-gray-800" : "bg-gray-700"
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-center">{e.word}</td>
+                      <td className="px-4 py-3 text-center">{e.guessRate}%</td>
+                      <td className="px-4 py-3 text-center">{e.mistakes}</td>
+                      <td className="px-4 py-3 text-center">{e.avgTime}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
           </div>
-          <div className="mt-4 flex justify-center gap-4">
+          <div className="flex justify-center space-x-4">
             <button
               onClick={() => {
                 if (!showWordsView) fetchWordStats();
                 setShowWordsView(!showWordsView);
               }}
-              className="border py-2 px-4 rounded cursor-pointer"
+              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
               {showWordsView ? "Leaderboard" : "Words"}
             </button>
-            <button onClick={backToMenu} className="border py-2 px-4 rounded cursor-pointer">
+            <button
+              onClick={backToMenu}
+              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
               Back to Menu
             </button>
           </div>
         </div>
       ) : (
         <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-4 text-center">Reverse Dictionary Game</h1>
-          <div className="bg-gray-800 shadow-md rounded-lg p-6">
+          <h1 className="text-4xl font-bold mb-6 text-center text-white">Reverse Dictionary</h1>
+          <div className="bg-gray-800 rounded-2xl shadow-xl p-8">
             {mode === "test" && !testCompleted && (
-              <p className="text-sm text-gray-300 mb-2">
+              <p className="text-sm text-gray-400 mb-4 text-left">
                 Round {poolIndex + 1} of {shuffledPool.length}
               </p>
             )}
-            <p className="mb-4 font-semibold">Definition:</p>
-            <p className="mb-6 italic">{definition}</p>
-            <input
-              value={userGuess}
-              onChange={e => setUserGuess(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter") checkGuess();
-              }}
-              disabled={testCompleted}
-              className="mb-4 p-2 w-full border rounded bg-gray-700"
-              placeholder="Guess the word..."
-            />
-            <>{!revealedAnswer && !testCompleted ? (
+
+            {! (mode === "test" && testCompleted) && (
+              <>
+                <p className="mb-4 text-lg font-semibold text-gray-200 text-left">Definition:</p>
+                <p className="mb-6 italic text-gray-300 text-left">{definition}</p>
+                <input
+                  value={userGuess}
+                  onChange={(e) => setUserGuess(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") checkGuess();
+                  }}
+                  disabled={testCompleted}
+                  className="mb-4 p-3 w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Guess the word..."
+                />
+              </>
+            )}
+
+            <>
+              {!revealedAnswer && !testCompleted ? (
                 <>
-                  <button onClick={checkGuess} className="w-full bg-blue-600 py-2 rounded mb-2 cursor-pointer">Submit</button>
-                  <button onClick={handleSkip} className="w-full border border-red-500 py-2 rounded mb-2 cursor-pointer">I don’t know</button>
+                  <button
+                    onClick={checkGuess}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Submit
+                  </button>
+                  <button
+                    onClick={handleSkip}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    I don’t know
+                  </button>
                 </>
               ) : revealedAnswer && !testCompleted ? (
                 <button
@@ -487,20 +526,47 @@ export default function ReverseDictionaryGame() {
                       await fetchWordAndDefinition();
                     }
                   }}
-                  className="w-full bg-green-600 py-2 rounded mb-2 cursor-pointer"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition"
                 >
                   Next Word
                 </button>
               ) : (
-                <p className="mt-4 text-center font-semibold">All {poolIndex} words done! Your final score: {score}</p>
+                <div className="bg-gray-700 rounded-lg p-6 mt-4">
+                  <p className="text-2xl font-bold text-center text-green-400 mb-2">
+                    🎉 Test Complete! 🎉
+                  </p>
+                  <p className="text-lg text-center text-gray-200">
+                    Your final score:
+                  </p>
+                  <p className="text-3xl font-bold text-green-400 text-center mb-4">
+                    {score}
+                  </p>
+                  <button
+                    onClick={backToMenu}
+                    className="mx-auto block bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-semibold transition"
+                  >
+                    Back to Menu
+                  </button>
+                </div>
               )}
-              {highScore !== null && (
-                <p className="text-center text-sm text-yellow-300 mb-2">Previous High Score: {highScore}</p>
+              {mode !== "test" && highScore !== null && (
+                <p className="mt-4 text-center text-sm text-yellow-300">
+                  Previous High Score: {highScore}
+                </p>
               )}
             </>
-            {feedback && <p className="mt-2 text-center">{feedback}</p>}
-            <p className="mt-2 text-sm text-center">Score: {score}</p>
-            <button onClick={backToMenu} className="mt-4 w-full border py-2 rounded cursor-pointer">Back to Menu</button>
+            {feedback && <p className="mt-4 text-center text-gray-300">{feedback}</p>}
+            {!(mode === "test" && testCompleted) && (
+              <p className="mt-4 text-lg text-center text-gray-200">Score: {score}</p>
+            )}
+            {mode !== "test" && (
+              <button
+                onClick={backToMenu}
+                className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Back to Menu
+              </button>
+            )}
           </div>
         </div>
       )}
