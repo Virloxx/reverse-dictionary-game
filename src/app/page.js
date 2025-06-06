@@ -148,9 +148,12 @@ export default function ReverseDictionaryGame() {
         player.mistakes += 1;
       }
     });
+
     const leaderboard = Object.entries(stats).map(([nickname, data]) => {
       const { score, wordData, mistakes } = data;
       const guessedWords = Object.entries(wordData).filter(([, v]) => v.guessed);
+
+      // Gather all correct-guess times for overall stats
       const allTimes = guessedWords.flatMap(([, v]) => v.times);
       const shortest = allTimes.length ? Math.min(...allTimes).toFixed(2) : "–";
       const longest = allTimes.length ? Math.max(...allTimes).toFixed(2) : "–";
@@ -158,15 +161,44 @@ export default function ReverseDictionaryGame() {
         ? (allTimes.reduce((a, b) => a + b, 0) / allTimes.length).toFixed(2)
         : "–";
 
-      const wordDifficulty = guessedWords.map(([word, data2]) => {
-        const avgTime = data2.times.length
-          ? data2.times.reduce((a, b) => a + b, 0) / data2.times.length
-          : Infinity;
-        return { word, difficultyScore: avgTime + data2.mistakes * 5 };
-      });
-      wordDifficulty.sort((a, b) => a.difficultyScore - b.difficultyScore);
+      const wordDifficulty = guessedWords
+        .map(([word, data2]) => {
+          const correctCount = data2.times.length;
+          const mistakesCount = data2.mistakes;
+          const totalTries = correctCount + mistakesCount;
+          if (totalTries === 0) return null;
+
+          // average time of correct guesses (or null if never correct)
+          const avgTime = correctCount > 0
+            ? data2.times.reduce((a, b) => a + b, 0) / correctCount
+            : null;
+
+          // mistake rate between 0 and 1
+          const successRate = correctCount / totalTries;
+          const mistakeRate = 1 - successRate;
+
+          // normalize avgTime into [0, 1], clamping between 5s and 40s
+          let normalizedTime;
+          if (avgTime === null) {
+            normalizedTime = 1.0; // never got it right -> hardest
+          } else {
+            const clamped = Math.min(Math.max(avgTime, 5), 40);
+            normalizedTime = (clamped - 5) / (40 - 5);
+          }
+
+          // weights for difficulty calculation
+          const w_time = 0.6;
+          const w_mistake = 0.4;
+
+          const difficultyScore = w_time * normalizedTime + w_mistake * mistakeRate;
+          return { word, difficultyScore };
+        })
+        .filter((entry) => entry !== null)
+        .sort((a, b) => a.difficultyScore - b.difficultyScore);
+
       const easiestWord = wordDifficulty[0]?.word ?? "–";
       const hardestWord = wordDifficulty[wordDifficulty.length - 1]?.word ?? "–";
+
       return {
         nickname,
         score,
@@ -178,6 +210,7 @@ export default function ReverseDictionaryGame() {
         hardestWord,
       };
     });
+    
     leaderboard.sort((a, b) => b.score - a.score);
     setLeaderboard(leaderboard);
   }
@@ -494,7 +527,7 @@ export default function ReverseDictionaryGame() {
               </p>
             )}
 
-            {! (mode === "test" && testCompleted) && (
+            {!(mode === "test" && testCompleted) && (
               <>
                 <p className="mb-4 text-lg font-semibold text-gray-200 text-left">Definition:</p>
                 <p className="mb-6 italic text-gray-300 text-left">{definition}</p>
