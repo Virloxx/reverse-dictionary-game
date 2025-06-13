@@ -182,8 +182,8 @@ export default function ReverseDictionaryGame() {
           if (avgTime === null) {
             normalizedTime = 1.0; // never got it right -> hardest
           } else {
-            const clamped = Math.min(Math.max(avgTime, 5), 40);
-            normalizedTime = (clamped - 5) / (40 - 5);
+            const clamped = Math.min(Math.max(avgTime, 5), 50);
+            normalizedTime = (clamped - 5) / (50 - 5);
           }
 
           // weights for difficulty calculation
