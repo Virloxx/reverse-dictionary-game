@@ -500,15 +500,17 @@ export default function ReverseDictionaryGame() {
             )}
           </div>
           <div className="flex justify-center space-x-4">
-            <button
-              onClick={() => {
-                if (!showWordsView) fetchWordStats();
-                setShowWordsView(!showWordsView);
-              }}
-              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              {showWordsView ? "Leaderboard" : "Words"}
-            </button>
+            {mode === "test" && (
+              <button
+                onClick={() => {
+                  if (!showWordsView) fetchWordStats();
+                  setShowWordsView(!showWordsView);
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                {showWordsView ? "Leaderboard" : "Words"}
+              </button>
+            )}
             <button
               onClick={backToMenu}
               className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500"
