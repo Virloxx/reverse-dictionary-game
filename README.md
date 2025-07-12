@@ -2,6 +2,8 @@
 
 A web-based reverse dictionary game built with **Next.js** as part of my master's thesis. Players are given a definition and must guess the correct word. Includes two gamemodes, a leaderboard, and detailed word statistics.
 
+👉 **Play it here:** [https://reverse-dictionary-game.netlify.app/](https://reverse-dictionary-game.netlify.app/)
+
 ## 🚀 Features
 
 - 🎮 **Two Game Modes**
