@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🧠 Reverse Dictionary Game
 
-## Getting Started
+A web-based reverse dictionary game built with **Next.js** as part of my master's thesis. Players are given a definition and must guess the correct word. Includes two gamemodes, a leaderboard, and detailed word statistics.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- 🎮 **Two Game Modes**
+  - **Test Mode**: Fixed word pool (great for controlled experiments or testing).
+  - **Random Mode**: Fetches random words in real-time using an API.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- 📚 **Definition-based Word Guessing**
+  - Definitions provided by [Dictionary API](https://dictionaryapi.dev/)
+  - Words sourced from [Rando API](https://random-word-api.vercel.app/)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- 🏆 **Leaderboard & Stats**
+  - Global leaderboard with scores, reaction times, and accuracy
+  - Word-specific statistics (guess rate, average time, mistakes)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- ☁️ **Firebase Integration**
+  - Stores scores, attempts and a word pool
+  - Realtime leaderboard and analytics
 
-## Learn More
+## 🔧 Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js**
+- **React** + **TailwindCSS**
+- **Firebase Firestore**
+- **Lemmatizer** for word normalization
+- **Rando API**
+- **Dictionary API**
